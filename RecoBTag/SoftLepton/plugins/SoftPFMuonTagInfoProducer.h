@@ -42,22 +42,14 @@ class SoftPFMuonTagInfoProducer : public edm::stream::EDProducer<>
   private:
 
     virtual void produce(edm::Event&, const edm::EventSetup&);
-    reco::SoftLeptonProperties fillMuonProperties(const reco::PFCandidate&, const reco::Jet&);	 
-    bool isMuonClean(edm::Event&,const reco::PFCandidate*);
-    
-    bool  isLooseMuon(const reco::Muon*);
-    bool  isSoftMuon (const reco::Muon*);
-    bool  isTightMuon(const reco::Muon*);	
-	
-    // service used to make transient tracks from tracks
-    const TransientTrackBuilder* transientTrackBuilder;
-    edm::EDGetTokenT<reco::VertexCollection> token_primaryVertex;
-    edm::EDGetTokenT<edm::View<reco::Jet> > token_jets;
-    bool goodvertex;
-    int MuonId_,muonId;
+    virtual void fillSoftMuonTagInfo(const reco::Muon*, const reco::Jet*, const reco::Vertex*, const TransientTrackBuilder*, reco::SoftLeptonTagInfo*);
+    virtual bool promptLeptonFilter(float, float);
 
-    const reco::Vertex* vertex;
-
+    edm::EDGetTokenT<edm::View<reco::Jet> > jetToken;
+    edm::EDGetTokenT<edm::View<reco::Muon> > muonToken;
+    edm::EDGetTokenT<reco::VertexCollection> vertexToken;
+    float pTcut, IPcut, ratio1cut, ratio2cut, dRcut;
+    bool useFilter, useMINIAOD;
 };
 
 
