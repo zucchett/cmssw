@@ -38,15 +38,13 @@ class SoftPFMuonTagInfoProducer : public edm::stream::EDProducer<>
 
     SoftPFMuonTagInfoProducer (const edm::ParameterSet& conf);
     ~SoftPFMuonTagInfoProducer();
-    reco::SoftLeptonTagInfo tagMuon (const edm::RefToBase<reco::Jet> &, reco::PFCandidateCollection &) ;
+    //reco::SoftLeptonTagInfo tagMuon (const edm::RefToBase<reco::Jet> &, reco::PFCandidateCollection &);
+    
   private:
 
     virtual void produce(edm::Event&, const edm::EventSetup&);
-    virtual void fillSoftMuonTagInfo(const reco::Muon*, const reco::Jet*, const reco::Vertex*, const TransientTrackBuilder*, reco::SoftLeptonTagInfo*);
-    virtual bool promptLeptonFilter(float, float);
 
     edm::EDGetTokenT<edm::View<reco::Jet> > jetToken;
-    edm::EDGetTokenT<edm::View<reco::Muon> > muonToken;
     edm::EDGetTokenT<reco::VertexCollection> vertexToken;
     float pTcut, IPcut, ratio1cut, ratio2cut, dRcut;
     bool useFilter, useMINIAOD;
