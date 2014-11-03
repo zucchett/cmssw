@@ -6,34 +6,32 @@
 #include "RecoBTag/SoftLepton/interface/LeptonSelector.h"
 #include "RecoBTag/SoftLepton/src/MuonTaggerMLP.h"
 
-/**  \class MuonTagger
- *
- *   Implementation of muon b-tagging using a softmax multilayer perceptron neural network
- *
- *
- *   \author Andrea 'fwyzard' Bocci, Universita' di Firenze
- */
+#include <TROOT.h>
+#include "TRandom3.h"
+#include "TMVA/Factory.h"
+#include "TMVA/Tools.h"
+#include "TMVA/Reader.h"
 
 class MuonTagger : public JetTagComputer {
-public:
 
-  /// explicit ctor 
-  explicit MuonTagger(const edm::ParameterSet & configuration) : 
-    m_selector(configuration)
-  { 
-    uses("smTagInfos"); 
-  }
+  public:
   
-  /// dtor
-  virtual ~MuonTagger() { }
+    MuonTagger(const edm::ParameterSet&);
+    ~MuonTagger();
+    
+    virtual float discriminator(const TagInfoHelper& tagInfo);
+    
+  private:
 
-  /// b-tag a jet based on track-to-jet parameters in the extened info collection
-  virtual float discriminator(const TagInfoHelper & tagInfo) const;
-
-private:
-
-  btag::LeptonSelector m_selector;
+    btag::LeptonSelector m_selector;
+    
+    TMVA::Reader* TMVAReader;
+    TRandom3* random;
+    
+    std::string weightFile, methodName;
+    float mva_sip3d, mva_sip2d, mva_ptRel, mva_dR;
 
 };
 
-#endif // RecoBTag_SoftLepton_MuonTagger_h
+#endif
+
