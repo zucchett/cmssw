@@ -1,3 +1,7 @@
+// * Author: Alberto Zucchetta
+// * Mail: a.zucchetta@cern.ch
+// * November 6, 2014
+
 #include "RecoBTag/SoftLepton/plugins/SoftPFMuonTagInfoProducer.h"
 #include "DataFormats/GsfTrackReco/interface/GsfTrack.h"
 #include "DataFormats/GsfTrackReco/interface/GsfTrackFwd.h"
@@ -11,6 +15,7 @@
 #include "DataFormats/JetReco/interface/Jet.h"
 #include "DataFormats/PatCandidates/interface/Jet.h"
 #include "DataFormats/PatCandidates/interface/PackedCandidate.h"
+#include "DataFormats/PatCandidates/interface/Muon.h"
 // Muons
 #include "DataFormats/MuonReco/interface/Muon.h"
 #include "DataFormats/MuonReco/interface/MuonFwd.h"
@@ -28,16 +33,15 @@
 #include "DataFormats/GeometryVector/interface/GlobalVector.h"
 #include <cmath>
 
-SoftPFMuonTagInfoProducer::SoftPFMuonTagInfoProducer (const edm::ParameterSet& conf) {
+SoftPFMuonTagInfoProducer::SoftPFMuonTagInfoProducer(const edm::ParameterSet& conf) {
   jetToken    = consumes<edm::View<reco::Jet> >(conf.getParameter<edm::InputTag>("jets"));
+  muonToken   = consumes<edm::View<reco::Muon> >(conf.getParameter<edm::InputTag>("muons"));
   vertexToken = consumes<reco::VertexCollection>(conf.getParameter<edm::InputTag>("vertex"));
   pTcut       = conf.getParameter<double>("muonPt");
   IPcut       = conf.getParameter<double>("filterIp");
   ratio1cut   = conf.getParameter<double>("filterRatio1");
   ratio2cut   = conf.getParameter<double>("filterRatio2");
-  dRcut       = conf.getParameter<double>("dRcut");
   useFilter   = conf.getParameter<bool>("filterPromptMuons");
-  useMINIAOD  = conf.getParameter<bool>("runMINIAOD");
   produces<reco::SoftLeptonTagInfoCollection>();
 }
 
@@ -51,6 +55,10 @@ void SoftPFMuonTagInfoProducer::produce(edm::Event& iEvent, const edm::EventSetu
   edm::Handle<edm::View<reco::Jet> > theJetCollection;
   iEvent.getByToken(jetToken, theJetCollection);
   
+  // Declare Muon collection
+  edm::Handle<edm::View<reco::Muon> > theMuonCollection;
+  iEvent.getByToken(muonToken, theMuonCollection);
+  
   // Declare and open Vertex collection
   edm::Handle<reco::VertexCollection> theVertexCollection;
   iEvent.getByToken(vertexToken, theVertexCollection);
@@ -63,63 +71,87 @@ void SoftPFMuonTagInfoProducer::produce(edm::Event& iEvent, const edm::EventSetu
   const TransientTrackBuilder* transientTrackBuilder=theTrackBuilder.product();
   
   
-  // Loop on jets
-  for(unsigned int i=0; i<theJetCollection->size(); i++) { // --- Begin loop on jets
-    edm::RefToBase<reco::Jet> jetRef = theJetCollection->refAt(i);
+  for(unsigned int ij=0, nj=theJetCollection->size(); ij<nj; ij++) { // --- Begin loop on jets
+    edm::RefToBase<reco::Jet> jetRef = theJetCollection->refAt(ij);
     // Build TagInfo object
     reco::SoftLeptonTagInfo tagInfo;
     tagInfo.setJetRef(jetRef);
     
     for(unsigned int id=0, nd=jetRef->numberOfDaughters(); id<nd; ++id) { // --- Begin loop on daughters
       const reco::Candidate* lep = jetRef->daughter(id);
-      const reco::Track* trk(NULL);
-      reco::TrackBaseRef trkRef;
+      if(abs(lep->pdgId())!=13) continue;
       
-      // Part 1: Identification
-      if(useMINIAOD) {
-        const pat::PackedCandidate* pkcand = dynamic_cast<const pat::PackedCandidate*>(lep);
-        // Identification
-        if(!pkcand || abs(pkcand->pdgId())!=13) continue; // Identification
-        if(!(pkcand->isGlobalMuon() /*|| pkcand->isTrackerMuon()*/) ) continue; // Quality FIXME
-        trk=&pkcand->pseudoTrack(); // Track FIXME
+      const reco::Muon* muon(NULL);
+      // Step 1: try to access the muon from reco::PFCandidate
+      const reco::PFCandidate* pfcand=dynamic_cast<const reco::PFCandidate*>(lep);
+      if(pfcand) {
+        muon=pfcand->muonRef().get();
       }
+      // If not PFCandidate is available, find a match looping on the muon collection
       else {
-        const reco::PFCandidate* pfcand = dynamic_cast<const reco::PFCandidate*>(lep);
-        if(!pfcand || pfcand->particleId()!=3) continue; // Identification
-        const reco::Muon* muon=pfcand->muonRef().get();
-        if( !muon::isLooseMuon(*muon) ) continue; // Quality
-        trk=(muon->globalTrack().isNonnull() ? muon->globalTrack() : muon->innerTrack()).get(); // Track
-        trkRef=reco::TrackBaseRef(muon->globalTrack().isNonnull() ? muon->globalTrack() : muon->innerTrack()); // TrackRef
+        for(unsigned int im=0, nm=theMuonCollection->size(); im<nm; ++im) { // --- Begin loop on muons
+          const reco::Muon* tmpmuon=theMuonCollection->refAt(im).get();
+          const pat::Muon* patmuon=dynamic_cast<const pat::Muon*>(tmpmuon);
+          // Step 2: try a match between reco::Candidate
+          if(patmuon) {
+            if(patmuon->originalObject()==lep) {
+              muon=theMuonCollection->refAt(im).get();
+              break;
+            }
+          }
+          // Step 3: try a match with dR and dpT if pat::Muon casting fails
+          else {
+            if(deltaR(*tmpmuon, *lep)<0.01 && fabs(tmpmuon->pt()-lep->pt())/lep->pt()<0.1) {
+              muon=theMuonCollection->refAt(im).get();
+              break;
+            }
+          }
+        } // --- End loop on muons
       }
-      // Additional quality cuts
-      if(lep->pt()<pTcut) continue;
+      if(!muon || !muon::isLooseMuon(*muon) || muon->pt()<pTcut) continue;
+      reco::TrackRef trkRef( muon->innerTrack() );
+      reco::TrackBaseRef trkBaseRef( trkRef );
       
       // Build Transient Track
-      reco::TransientTrack transientTrack=transientTrackBuilder->build(trk);
+      reco::TransientTrack transientTrack=transientTrackBuilder->build(trkRef);
       // Calculate variables
       reco::SoftLeptonProperties properties;
-      //float ip2d     = IPTools::signedTransverseImpactParameter(transientTrack, GlobalVector(jetRef->px(), jetRef->py(), jetRef->pz()), *vertex).second.value();
-      //float ip3d     = IPTools::signedImpactParameter3D(transientTrack, GlobalVector(jetRef->px(), jetRef->py(), jetRef->pz()), *vertex).second.value();
       properties.sip2d    = IPTools::signedTransverseImpactParameter(transientTrack, GlobalVector(jetRef->px(), jetRef->py(), jetRef->pz()), *vertex).second.significance();
       properties.sip3d    = IPTools::signedImpactParameter3D(transientTrack, GlobalVector(jetRef->px(), jetRef->py(), jetRef->pz()), *vertex).second.significance();
-      properties.deltaR   = deltaR(*jetRef, *lep);
-      properties.ptRel    = ( (jetRef->p4().Vect()-lep->p4().Vect()).Cross(lep->p4().Vect()) ).R() / jetRef->p4().Vect().R(); // | (Pj-Pu) X Pu | / | Pj |
-      float mag = lep->p4().Vect().R()*jetRef->p4().Vect().R();
-      float dot = lep->p4().Dot(jetRef->p4());
+      properties.deltaR   = deltaR(*jetRef, *muon);
+      properties.ptRel    = ( (jetRef->p4().Vect()-muon->p4().Vect()).Cross(muon->p4().Vect()) ).R() / jetRef->p4().Vect().R(); // | (Pj-Pu) X Pu | / | Pj |
+      float mag = muon->p4().Vect().R()*jetRef->p4().Vect().R();
+      float dot = muon->p4().Dot(jetRef->p4());
       properties.etaRel   = -log((mag - dot)/(mag + dot)) / 2.;
-      properties.ratio    = lep->pt() / jetRef->pt();
-      properties.ratioRel = lep->p4().Dot(jetRef->p4()) / jetRef->p4().Vect().Mag2();
-
+      properties.ratio    = muon->pt() / jetRef->pt();
+      properties.ratioRel = muon->p4().Dot(jetRef->p4()) / jetRef->p4().Vect().Mag2();
+      properties.p0Par    = boostedPPar(muon->momentum(), jetRef->momentum());
+      
+      if(fabs(properties.sip3d)>200.) continue;
+      
       // Filter leptons from W, Z decays
       if(useFilter && ((fabs(properties.sip3d)<IPcut && properties.ratio>ratio1cut) || properties.ratio>ratio2cut)) continue;
       
-      // Fill Tag Info
-      tagInfo.insert(trkRef, properties);
+      // Fill and write Tag Info
+      tagInfo.insert(trkBaseRef, properties);
+      theMuonTagInfo->push_back(tagInfo);
       
     } // --- End loop on daughters
     
   } // --- End loop on jets
+  
   std::auto_ptr<reco::SoftLeptonTagInfoCollection> MuonTagInfoCollection(theMuonTagInfo);
   iEvent.put(MuonTagInfoCollection);
+}
+
+
+// compute the lepton momentum along the jet axis, in the jet rest frame
+float SoftPFMuonTagInfoProducer::boostedPPar(const math::XYZVector& vector, const math::XYZVector& axis) {
+  static const double lepton_mass = 0.00;       // assume a massless (ultrarelativistic) lepton
+  static const double jet_mass    = 5.279;      // use B±/B0 mass as the jet rest mass [PDG 2007 updates]
+  ROOT::Math::LorentzVector<ROOT::Math::PxPyPzM4D<double> > lepton(vector.Dot(axis) / axis.r(), ROOT::Math::VectorUtil::Perp(vector, axis), 0., lepton_mass);
+  ROOT::Math::LorentzVector<ROOT::Math::PxPyPzM4D<double> > jet( axis.r(), 0., 0., jet_mass );
+  ROOT::Math::BoostX boost( -jet.Beta() );
+  return boost(lepton).x();
 }
 

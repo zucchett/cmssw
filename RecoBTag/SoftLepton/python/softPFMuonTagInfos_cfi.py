@@ -5,10 +5,8 @@ softPFMuonsTagInfos = cms.EDProducer("SoftPFMuonTagInfoProducer",
   muons             = cms.InputTag("muons"),
   vertex            = cms.InputTag("offlinePrimaryVertices"),
   muonPt            = cms.double(2.),
-	filterIp          = cms.double(3.),
+	filterIp          = cms.double(4.),
 	filterRatio1      = cms.double(0.4),
 	filterRatio2      = cms.double(0.7),
-	dRcut             = cms.double(0.4), # Effective only for MINIAOD
-  filterPromptMuons = cms.bool(True),
-  runMINIAOD        = cms.bool(True)
+  filterPromptMuons = cms.bool(False)
 )

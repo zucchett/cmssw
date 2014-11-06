@@ -1,3 +1,7 @@
+// * Author: Alberto Zucchetta
+// * Mail: a.zucchetta@cern.ch
+// * November 6, 2014
+
 #ifndef RecoBTag_SoftLepton_SoftPFMuonTagInfoProducer_h
 #define RecoBTag_SoftLepton_SoftPFMuonTagInfoProducer_h
 
@@ -27,27 +31,24 @@
 #include "DataFormats/VertexReco/interface/Vertex.h"
 #include "DataFormats/VertexReco/interface/VertexFwd.h"
 #include "DataFormats/BTauReco/interface/SoftLeptonTagInfo.h"
-// SoftPFMuonTagInfoProducer:  the SoftPFMuonTagInfoProducer takes
-// a PFCandidateCollection as input and produces a RefVector
-// to the likely soft muons in this collection.
 
-class SoftPFMuonTagInfoProducer : public edm::stream::EDProducer<>
-{
+class SoftPFMuonTagInfoProducer : public edm::stream::EDProducer<> {
 
   public:
 
-    SoftPFMuonTagInfoProducer (const edm::ParameterSet& conf);
+    SoftPFMuonTagInfoProducer(const edm::ParameterSet& conf);
     ~SoftPFMuonTagInfoProducer();
-    //reco::SoftLeptonTagInfo tagMuon (const edm::RefToBase<reco::Jet> &, reco::PFCandidateCollection &);
     
   private:
 
     virtual void produce(edm::Event&, const edm::EventSetup&);
+    virtual float boostedPPar(const math::XYZVector&, const math::XYZVector&);
 
     edm::EDGetTokenT<edm::View<reco::Jet> > jetToken;
+    edm::EDGetTokenT<edm::View<reco::Muon> > muonToken;
     edm::EDGetTokenT<reco::VertexCollection> vertexToken;
-    float pTcut, IPcut, ratio1cut, ratio2cut, dRcut;
-    bool useFilter, useMINIAOD;
+    float pTcut, IPcut, ratio1cut, ratio2cut;
+    bool useFilter;
 };
 
 

@@ -26,7 +26,7 @@ class MvaSoftMuonEstimator {
     
     TMVA::Reader* TMVAReader;
     
-    std::string weightFile, methodName;
+    std::string weightFile;
     float mva_sip3d, mva_sip2d, mva_ptRel, mva_ratioRel;
 
 };

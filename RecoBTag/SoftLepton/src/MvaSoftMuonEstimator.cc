@@ -10,16 +10,15 @@
 
 
 MvaSoftMuonEstimator::MvaSoftMuonEstimator() {
-  weightFile="RecoBTag/SoftLepton/softPFMuon.weights.xml";
-  methodName="SoftPFMuon";
+  weightFile="RecoBTag/SoftLepton/data/SoftPFMuon_BDT.weights.xml";
   
   TMVAReader = new TMVA::Reader("!Color:!Silent:Error");
-  TMVAReader->SetVerbose(kTRUE);
+  TMVAReader->SetVerbose(false);
   TMVAReader->AddVariable("TagInfo1.sip3d", &mva_sip3d);
   TMVAReader->AddVariable("TagInfo1.sip2d", &mva_sip2d);
   TMVAReader->AddVariable("TagInfo1.ptRel", &mva_ptRel);
   TMVAReader->AddVariable("TagInfo1.ratioRel", &mva_ratioRel);
-  TMVAReader->BookMVA(methodName, weightFile);
+  TMVAReader->BookMVA("BDT", weightFile);
 }
 
 MvaSoftMuonEstimator::~MvaSoftMuonEstimator() {
@@ -34,7 +33,7 @@ float MvaSoftMuonEstimator::mvaValue(float sip3d, float sip2d, float ptRel, floa
   mva_ptRel = ptRel;
   mva_ratioRel = ratioRel;
   // Evaluate tagger
-  float tag = TMVAReader->EvaluateMVA(methodName) + 0.5;
+  float tag = TMVAReader->EvaluateMVA("BDT") + 0.5;
   return tag;
 }
 
