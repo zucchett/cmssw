@@ -57,7 +57,7 @@
 #include "DataFormats/BTauReco/interface/DeepDoubleBFeatures.h"
 #include "DataFormats/BTauReco/interface/DeepDoubleBTagInfo.h"
 #include "DataFormats/BTauReco/interface/DeepBoostedJetTagInfo.h"
-
+#include "DataFormats/BTauReco/interface/PixelClusterTagInfo.h"
 
 namespace reco {
     typedef TrackTauImpactParameterAssociationCollection::map_type          TrackTauImpactParameterAssociationMapType;
@@ -436,5 +436,10 @@ namespace DataFormats_BTauReco {
     reco::DeepBoostedJetTagInfoRefProd deep_boosted_jet_tag_info_collection_ref_prod;
     reco::DeepBoostedJetTagInfoRefVector deep_boosted_jet_tag_info_collection_ref_vector;
     edm::Wrapper<reco::DeepBoostedJetTagInfoCollection> deep_boosted_jet_tag_info_collection_edm_wrapper;
+
+    reco::PixelClusterData pixel_cluster_data;
+    reco::PixelClusterTagInfo pixel_cluster_tag_info;
+    reco::PixelClusterTagInfoCollection pixel_cluster_tag_info_collection;
+    edm::Wrapper<reco::PixelClusterTagInfoCollection> pixel_cluster_tag_info_collection_edm_wrapper;
   };
 }
